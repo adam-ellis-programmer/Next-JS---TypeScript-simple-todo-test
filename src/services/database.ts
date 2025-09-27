@@ -1,5 +1,5 @@
 const databaseService = {
-  async getDocs() {
+  async getDocs(data: { id: string }) {
     // ....
   },
   async getDoc() {
