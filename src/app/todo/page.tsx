@@ -142,6 +142,10 @@ const TodoPage = () => {
     }
   }
 
+  const updateToDo = (id: string) => {
+    console.log(id)
+  }
+
   return (
     <div className='min-h-screen  py-8'>
       {/* Header Section */}
@@ -234,6 +238,13 @@ const TodoPage = () => {
                       className='text-red-500 hover:text-red-700 disabled:text-red-300 font-medium transition-colors duration-200'
                     >
                       Delete
+                    </button>
+                    <button
+                      onClick={() => updateToDo(todo.$id)}
+                      disabled={loading}
+                      className=' hover:text-red-700 disabled:text-red-300 font-medium transition-colors duration-200'
+                    >
+                      Update
                     </button>
                   </li>
                 ))}
