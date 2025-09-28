@@ -1,13 +1,17 @@
 'use client'
-
+//  USE <T>
+//  USE <T>
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Todo } from '@/types/todo'
 import { databases, ID } from '@/lib/appwrite'
 
 const TodoPage = () => {
-  // State for the input field
+  // State for the input field -- ** no error without <string>
   const [todoText, setTodoText] = useState<string>('')
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState<string>('')
 
   // State for our todos list
   const [todos, setTodos] = useState<Todo[]>([])
@@ -47,6 +51,9 @@ const TodoPage = () => {
     fetchTodos()
   }, [])
 
+  //====================================================================================
+  //
+  //====================================================================================
   // Handle form submission - now saves to Appwrite
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -70,6 +77,9 @@ const TodoPage = () => {
         }
       )
 
+      //====================================================================================
+      //
+      //====================================================================================
       // Add the new todo to state
       setTodos((prevTodos) => [...prevTodos, response])
       setTodoText('')
@@ -83,11 +93,17 @@ const TodoPage = () => {
     }
   }
 
+  //====================================================================================
+  //
+  //====================================================================================
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTodoText(e.target.value)
   }
 
+  //====================================================================================
+  //
+  //====================================================================================
   // Toggle todo completion - now updates in Appwrite
   const toggleTodo = async (id: string) => {
     const todoToUpdate = todos.find((todo) => todo.$id === id)
@@ -108,11 +124,8 @@ const TodoPage = () => {
       )
 
       // Update local state
-      setTodos((prevTodos) =>
-        prevTodos.map((todo) =>
-          todo.$id === id ? { ...todo, completed: !todo.completed } : todo
-        )
-      )
+      // prettier-ignore
+      setTodos((prevTodos) => prevTodos.map((todo) => todo.$id === id ? { ...todo, completed: !todo.completed } : todo ))
 
       console.log('Updated todo:', response)
     } catch (err) {
@@ -123,6 +136,9 @@ const TodoPage = () => {
     }
   }
 
+  //====================================================================================
+  //
+  //====================================================================================
   // Delete todo - now deletes from Appwrite
   const deleteTodo = async (id: string) => {
     setLoading(true)
@@ -142,10 +158,68 @@ const TodoPage = () => {
     }
   }
 
+  //====================================================================================
+  //
+  //====================================================================================
   const updateToDo = (id: string) => {
-    console.log(id)
+    const todoToEdit = todos.find((todo) => todo.$id === id)
+    if (todoToEdit) {
+      setEditingId(id)
+      setEditText(todoToEdit.todo)
+    }
   }
 
+  //====================================================================================
+  //
+  //====================================================================================
+  const handleUpdateText = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditText(e.target.value)
+  }
+
+  //====================================================================================
+  //
+  //====================================================================================
+  const saveUpdate = async (id: string) => {
+    if (editText.trim() === '') return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Update document in Appwrite
+      const response = await databases.updateDocument<Todo>(
+        DATABASE_ID,
+        COLLECTION_ID,
+        id,
+        {
+          todo: editText.trim(),
+        }
+      )
+
+      // Update local state
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) =>
+          todo.$id === id ? { ...todo, todo: editText.trim() } : todo
+        )
+      )
+
+      // Reset editing state
+      setEditingId(null)
+      setEditText('')
+
+      console.log('Updated todo text:', response)
+    } catch (err) {
+      console.error('Error updating todo text:', err)
+      setError('Failed to update todo text')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cancelUpdate = () => {
+    setEditingId(null)
+    setEditText('')
+  }
   return (
     <div className='min-h-screen  py-8'>
       {/* Header Section */}
@@ -223,15 +297,47 @@ const TodoPage = () => {
                       disabled={loading}
                       className='w-4 h-4 text-blue-600 rounded focus:ring-blue-500 disabled:opacity-50'
                     />
-                    <span
-                      className={`flex-1 ${
-                        todo.completed
-                          ? 'line-through text-gray-500'
-                          : 'text-gray-800'
-                      }`}
-                    >
-                      {todo.todo}
-                    </span>
+                    {/* ================ */}
+                    {/* IF EDITING CHECK */}
+                    {/* ================ */}
+                    {editingId === todo.$id ? (
+                      <div className='flex-1 flex gap-2'>
+                        <input
+                          type='text'
+                          value={editText}
+                          onChange={handleUpdateText}
+                          className='flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500'
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveUpdate(todo.$id)
+                            if (e.key === 'Escape') cancelUpdate()
+                          }}
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => saveUpdate(todo.$id)}
+                          className='text-green-600 hover:text-green-700 font-medium'
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelUpdate}
+                          className='text-gray-500 hover:text-gray-700 font-medium'
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        className={`flex-1 ${
+                          todo.completed
+                            ? 'line-through text-gray-500'
+                            : 'text-gray-800'
+                        }`}
+                      >
+                        {todo.todo}
+                      </span>
+                    )}
+
                     <button
                       onClick={() => deleteTodo(todo.$id)}
                       disabled={loading}
